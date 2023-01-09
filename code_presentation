@@ -1,0 +1,148 @@
+; Base des faits : les statistiques d'un combat
+ (setq combat '( (combattant1 'PetrYan) (combattant2 'SeanOmalley)
+               (Frappes_sign (13 12) (17 16) ( 12 17))
+               (Sign_% (13 12) (15 16) (17 12))
+               (Total_frappes (12 12) (15 16) (17 12))
+               (Takedown (2 1) (1 0) ( 0 2) )
+               (TD_% (12 12) (15 16) (17 12))
+               (Temps_CC (1.1 0.2) (1.1 0.2) (1.1 0.2) )
+               (sms_tentees (2 1) (1 0) (2 0) )
+               (KO (0 0)(0 0)(0 0))))
+
+; Connaissances sur les avantages aucours d'un round
+(setq avantages '( ))
+
+
+;Fonction permettant d'avoir la statistique d'un round en particulier
+(defun get-stats (Round stat)
+  (nth (- Round 1) (cdr(assoc stat combat))))
+ 
+;fonction pour enlever une regle de la liste des regles
+(defun enlever-regle (regle liste)
+  "Enlève la règle donnée de la liste."
+  (remove regle liste))
+
+;boucle while 
+ (defmacro while (test &body decls/tags/forms)
+  `(do () ((not ,test) (values))
+     ,@decls/tags/forms))
+
+;Fonction pour si la base de regle est vide ou non   
+     (defun non-vide (liste)
+  (not (null liste)))
+  
+;Fonction pour le nom du combattant  
+ (defun get-combattant (numero)
+  (if (equal numero 1)
+      (cadr(assoc 'combattant1 combat))
+    (cadr(assoc 'combattant2 combat))))
+
+;Fonction pour avoir les statistiques du combattant 1   
+(defun get-combattant1 (Round stat)
+  (car (get-stats Round stat)))
+
+;Fonction pour avoir les statistiques du combattant 2
+(defun get-combattant2 (Round stat)
+  (cadr (get-stats Round stat)))
+
+;Fonction faisant la difference de deux statistiques d'un combattant
+(defun difference (Round stat)
+  (- (get-combattant1 Round stat)(get-combattant2 Round stat)))
+
+; Fonction comparant deux statistiques d'un combattant
+(defun compare (Round stat)
+  (> (get-combattant1 Round stat)(get-combattant2 Round stat)))
+
+;Fonction pour ajouter un fait à la base de fait
+(defun ajouter-fait ( fait bdf)
+  (push fait bdf))
+
+; Fonction pour supprimer une regle de la base de regle
+(defun delete-regle (regle)
+  (setf baseDeRegles (delete (assoc regle baseDeRegles2)baseDeRegles2)))
+
+
+; Fonctions de manipulation de la base de regles
+(defun premisse (regle) (cadr regle))
+(defun numRegle (regle) (car regle))
+(defun conclusion-regle (regle) (caddr regle))
+
+
+; regarde si la règle est applicable 
+; renvoie T ou nil
+(defun peut-appliquer (regle)
+  (eval (premisse regle)))
+
+; Fonction qui regarde si l'avantage est membre de la base d'avantages 
+(defun is-avantage (avantage)
+  (subsetp avantage avantages))
+
+; Fonction d'affichage en cas de gain de round
+(defun gain-round (combattant round)
+(progn
+(if (equal combattant 1)
+(progn 
+(format t "Le combattant ~@S gagne le round ~@S sur un score de 10-9 ~%" (get-combattant 1) round )
+(setf (nth 0 score-final) (1+ (nth 0 score-final))))
+(progn
+(format t "Le combattant ~@S gagne le round ~@S sur un score de 10-9 ~%" (get-combattant 2) round )
+(setf (nth 1 score-final) (1+ (nth 1 score-final)))))
+(if (= round 3)
+(if (> (car score-final)(cadr score-final))
+(format t "Le combattant ~@S gagne le combat ! ~%" (get-combattant 1) )
+(format t "Le combattant ~@S gagne le combat ! ~%" (get-combattant 2) )
+)
+'nil)
+))
+
+; replace les occurences de round par l'argument nbr : numero de round
+(defun replace-round (lst nbr)
+  "Replace all occurrences of 'round' with nbr in the given list."
+  (mapcar (lambda (x) (if (listp x) (replace-round x nbr) (if (eq x 'round) nbr x))) lst))
+  
+; Création de la base de regles
+(setq baseDeRegles '( (R1 (compare  round 'Frappes_sign)(push 'AvantageFrappes_C1 avantages) )
+                     (R1_bis (not(compare round 'Frappes_sign)) (push 'AvantageFrappes_C2 avantages))
+                     (R2 (compare round 'TakeDown)(push 'AvantageTD_C1 avantages) )
+                     (R2_bis (not(compare round 'TakeDown)) (push 'AvantageTD_C2 avantages) )
+                     (R3 (and (is-avantage '(AvantageTD_C1) ) (is-avantage '(AvantageFrappes_C1) )) (gain-round 1 round))
+                     (R3_bis (and (is-avantage '(AvantageTD_C2) ) (is-avantage '(AvantageFrappes_C2) )) (gain-round  2 round))
+                     )
+      )
+; Création d'une nouvelle base de regles pour mettre à jour lors de l'incrémentation     
+(defun nouvelle-bdr ()
+(setq baseDeRegles '( (R1 (compare  round 'Frappes_sign)(push 'AvantageFrappes_C1 avantages) )
+                     (R1_bis (not(compare round 'Frappes_sign)) (push 'AvantageFrappes_C2 avantages))
+                     (R2 (compare round 'TakeDown)(push 'AvantageTD_C1 avantages) )
+                     (R2_bis (not(compare round 'TakeDown)) (push 'AvantageTD_C2 avantages) )
+                     (R3 (and (is-avantage '(AvantageTD_C1) ) (is-avantage '(AvantageFrappes_C1) )) (gain-round 1 round))
+                     (R3_bis (and (is-avantage '(AvantageTD_C2) ) (is-avantage '(AvantageFrappes_C2) )) (gain-round  2 round))
+                     )
+      )
+)
+      
+(defun chainage-avant (baseDeRegles)
+  (while (non-vide basedeRegles)
+    (let ((regle (car  baseDeRegles )))
+    
+    (if (peut-appliquer regle)
+      (progn
+      
+      (format t "regle ~@S appliquée ~%" (numRegle regle))  ; affiche la conclusion de la règle
+      (setf basedeRegles (enlever-regle regle basedeRegles))
+      (eval (conclusion-regle regle))
+      )
+      (progn
+      (setf basedeRegles (enlever-regle regle basedeRegles))))
+      ))
+  )  
+  
+(setq score-final '(0 0))
+(setq i 1)
+(while (< i 4) ; les 3 rounds
+(format t "Round  ~@S ! ~%" i)
+(setq baseDeRegles (replace-round basedeRegles (eval i)))
+(chainage-avant baseDeRegles)
+(nouvelle-bdr) 
+(setq i (+ i 1))
+)
